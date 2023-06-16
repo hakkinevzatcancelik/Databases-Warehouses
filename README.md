@@ -13,7 +13,7 @@
   </p>
   <h2>2. Conceptual Model Diagram:</h2>
   <p>
-    [Insert conceptual model diagram here]
+    <img src="Diagram.png" alt="Conceptual Model Diagram">
   </p>
   <h2>3. Description of Tables:</h2>
   <p>
