@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dormitory Management System Database Design - Project Report</title>
+  Dormitory Management System Database Design - Project Report
 </head>
 <body>
   <h1>Project Report: Dormitory Management System Database Design</h1>
