@@ -1,70 +1,125 @@
 -- Create the students table.
 CREATE TABLE students (
-student_id INT PRIMARY KEY,
-first_name VARCHAR(50) NOT NULL,
-last_name VARCHAR(50) NOT NULL,
-deposit DECIMAL(10, 2) NOT NULL,
-monthly_payment DECIMAL(10, 2) NOT NULL,
-birth_date DATE NOT NULL,
-gender VARCHAR(10) NOT NULL,
-room_id INT,
-FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+  student_id INT PRIMARY KEY,
+  first_name VARCHAR(50) NOT NULL,
+  last_name VARCHAR(50) NOT NULL,
+  deposit DECIMAL(10, 2) NOT NULL,
+  monthly_payment DECIMAL(10, 2) NOT NULL,
+  birth_date DATE NOT NULL,
+  gender VARCHAR(10) NOT NULL,
+  room_id INT,
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id)
 );
 
 -- Create the rooms table.
 CREATE TABLE rooms (
-room_id INT PRIMARY KEY,
-capacity INT NOT NULL,
-floor INT NOT NULL
+  room_id INT PRIMARY KEY,
+  capacity INT NOT NULL,
+  floor INT NOT NULL
 );
 
 -- Create the visits table.
 CREATE TABLE visits (
-visit_id INT PRIMARY KEY,
-student_id INT NOT NULL,
-room_id INT NOT NULL,
-check_in DATETIME NOT NULL,
-check_out DATETIME,
-FOREIGN KEY (student_id) REFERENCES students(student_id),
-FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+  visit_id INT PRIMARY KEY,
+  student_id INT NOT NULL,
+  room_id INT NOT NULL,
+  check_in DATETIME NOT NULL,
+  check_out DATETIME,
+  FOREIGN KEY (student_id) REFERENCES students(student_id),
+  FOREIGN KEY (room_id) REFERENCES rooms(room_id)
 );
 
 -- Create the visitors table.
 CREATE TABLE visitors (
-visitor_id INT PRIMARY KEY,
-student_id INT NOT NULL,
-visit_id INT NOT NULL,
-name VARCHAR(50) NOT NULL,
-FOREIGN KEY (student_id) REFERENCES students(student_id),
-FOREIGN KEY (visit_id) REFERENCES visits(visit_id)
+  visitor_id INT PRIMARY KEY,
+  student_id INT NOT NULL,
+  visit_id INT NOT NULL,
+  name VARCHAR(50) NOT NULL,
+  FOREIGN KEY (student_id) REFERENCES students(student_id),
+  FOREIGN KEY (visit_id) REFERENCES visits(visit_id)
 );
 
 -- Create the permissions table.
 CREATE TABLE permissions (
-permission_id INT PRIMARY KEY,
-student_id INT NOT NULL,
-permission_type VARCHAR(50) NOT NULL,
-start_date DATE NOT NULL,
-end_date DATE NOT NULL,
-FOREIGN KEY (student_id) REFERENCES students(student_id)
+  permission_id INT PRIMARY KEY,
+  student_id INT NOT NULL,
+  permission_type VARCHAR(50) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  FOREIGN KEY (student_id) REFERENCES students(student_id)
 );
 
 -- Create the laundry table.
 CREATE TABLE laundry (
-laundry_id INT PRIMARY KEY,
-student_id INT NOT NULL,
-laundry_order DATETIME NOT NULL,
-laundry_room_id INT,
-FOREIGN KEY (student_id) REFERENCES students(student_id)
+  laundry_id INT PRIMARY KEY,
+  student_id INT NOT NULL,
+  laundry_order DATETIME NOT NULL,
+  laundry_room_id INT,
+  FOREIGN KEY (student_id) REFERENCES students(student_id)
 );
 
 -- Create the postalar table.
 CREATE TABLE postalar (
-posta_id INT PRIMARY KEY,
-student_id INT NOT NULL,
-posta_teslim TINYINT(1) NOT NULL DEFAULT 0,
-FOREIGN KEY (student_id) REFERENCES students(student_id)
+  posta_id INT PRIMARY KEY,
+  student_id INT NOT NULL,
+  posta_teslim TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (student_id) REFERENCES students(student_id)
 );
+
+-- Create the indexes
+CREATE INDEX idx_students_last_name ON students (last_name);
+CREATE INDEX idx_visits_check_in ON visits (check_in);
+
+-- Create the views
+CREATE VIEW student_details AS
+SELECT students.student_id, students.first_name, students.last_name, rooms.room_id, rooms.capacity
+FROM students
+INNER JOIN rooms ON students.room_id = rooms.room_id;
+
+-- Create the package
+CREATE PACKAGE student_pkg AS
+  PROCEDURE update_student_room(p_student_id IN INT, p_room_id IN INT);
+  FUNCTION get_student_count RETURN INT;
+END student_pkg;
+
+CREATE PACKAGE BODY student_pkg AS
+  PROCEDURE update_student_room(p_student_id IN INT, p_room_id IN INT) AS
+  BEGIN
+    UPDATE students SET room_id = p_room_id WHERE student_id = p_student_id;
+  END update_student_room;
+
+  FUNCTION get_student_count RETURN INT AS
+    student_count INT;
+  BEGIN
+    SELECT COUNT(*) INTO student_count FROM students;
+    RETURN student_count;
+  END get_student_count;
+END student_pkg;
+
+-- Create the triggers
+CREATE TRIGGER update_deposit
+BEFORE UPDATE OF deposit ON students
+FOR EACH ROW
+BEGIN
+  IF :NEW.deposit < 0 THEN
+    :NEW.deposit := 0;
+  END IF;
+END;
+
+CREATE TRIGGER check_room_capacity
+BEFORE INSERT OR UPDATE OF room_id ON students
+FOR EACH ROW
+DECLARE
+  room_capacity INT;
+  student_count INT;
+BEGIN
+  SELECT capacity INTO room_capacity FROM rooms WHERE room_id = :NEW.room_id;
+  SELECT COUNT(*) INTO student_count FROM students WHERE room_id = :NEW.room_id;
+
+  IF student_count >= room_capacity THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Room capacity exceeded');
+  END IF;
+END;
 
 -- Insert sample data into the rooms table (in a 9-story dormitory).
 INSERT INTO rooms (room_id, capacity, floor) VALUES
@@ -97,12 +152,12 @@ INSERT INTO students (student_id, first_name, last_name, deposit, monthly_paymen
 (3, 'Michael', 'Williams', 550.00, 275.00, '1999-09-20', 'Male', 3),
 (4, 'Olivia', 'Brown', 450.00, 225.00, '2002-03-12', 'Female', 4),
 (5, 'James', 'Jones', 550.00, 275.00, '1998-11-05', 'Male', 5),
-(6, 'Sophia', 'Davis', 500.00, 250.00, '2001-09-30', 'Female');
+(6, 'Sophia', 'Davis', 500.00, 250.00, '2001-09-30', 'Female', 8),
 (7, 'William', 'Miller', 600.00, 300.00, '2000-06-25', 'Male', 7),
 (8, 'Ava', 'Wilson', 450.00, 225.00, '1999-12-18', 'Female', 8),
 (9, 'Benjamin', 'Taylor', 550.00, 275.00, '2003-02-08', 'Male', 9),
 (10, 'Mia', 'Anderson', 500.00, 250.00, '2001-04-02', 'Female', 10),
-(11, 'Alexander', 'Thomas', 600.00, 300.00, '2000-08-14', 'Male', 11),
+(11, 'Alexander', 'Thomas', 600.00, 300.00, '2000-08-14', 'Male', 11);
 
 -- Room change
 UPDATE students SET room_id = 8 WHERE student_id = 6;
